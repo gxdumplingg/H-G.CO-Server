@@ -8,8 +8,10 @@ const config = {
     database: process.env.SQL_DB,
     options: {
         encrypt: false,
-        trustServerCertificate: true
-    }
+        trustServerCertificate: true,
+        enableArithAbort: true,
+    },
+    port: parseInt(process.env.SQL_PORT || '1433')
 };
 
 const pool = new sql.ConnectionPool(config);
@@ -21,8 +23,4 @@ poolConnect.then(() => {
     console.error('Database connection failed:', err);
 });
 
-module.exports = {
-    sql,
-    pool,
-    poolConnect
-};
+module.exports = { sql, pool, poolConnect };
