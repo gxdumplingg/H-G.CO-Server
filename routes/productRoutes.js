@@ -1,15 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { poolConnect, pool, sql } = require('../config/db');
+const Product = require('../models/productModel');
 
 router.get('/', async (req, res) => {
     try {
-        await poolConnect; // đợi kết nối trước khi query
-
-        const result = await pool.request()
-            .query('SELECT * FROM Products'); // bảng trong DB
-
-        res.json(result.recordset);
+        const products = await Product.find(); // Truy vấn tất cả sản phẩm từ MongoDB
+        res.json(products);
     } catch (err) {
         console.error('Query error:', err);
         res.status(500).send('Server error');
