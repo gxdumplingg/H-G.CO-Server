@@ -1,19 +1,105 @@
 const express = require('express');
 const router = express.Router();
-const { poolConnect, pool, sql } = require('../config/db');
+const Product = require('../models/Product');
+const Category = require('../models/Category');
+const mongoose = require('mongoose');
 
-router.get('/', async (req, res) => {
+router.get(`/`, async (req, res) => {
+    let filter = {};
+
+    if (req.query.categories) {
+        // Chia chuỗi categories thành mảng ID
+        const categoryIds = req.query.categories.split(',');
+        filter.category_id = { $in: categoryIds };
+    }
+
     try {
-        await poolConnect; // đợi kết nối trước khi query
-
-        const result = await pool.request()
-            .query('SELECT * FROM Products'); // bảng trong DB
-
-        res.json(result.recordset);
+        const productList = await Product.find(filter)
+            .populate('category_id', 'category_name')
+            .select('name product_images price');
+        res.status(200).send(productList);
     } catch (err) {
-        console.error('Query error:', err);
-        res.status(500).send('Server error');
+        res.status(500).json({ success: false, error: err.message });
     }
 });
+
+router.get('/:id', async (req, res) => {
+    const product = await Product.findById(req.params.id).populate('category_id');
+    if (!product) {
+        res.status(500).json({ success: false, message: 'Product not found' });
+    }
+    res.status(200).send(product);
+});
+
+router.post('/', async (req, res) => {
+    try {
+        const category_id = await Category.findById(req.body.category_id);
+        if (!category_id) {
+            return res.status(400).send('Invalid category');
+        }
+        const product = new Product({
+            category_id: req.body.category_id,
+            name: req.body.name,
+            price: req.body.price,
+            description: req.body.description,
+            SKU: req.body.SKU,
+            qty_in_stock: req.body.qty_in_stock,
+            product_images: req.body.product_images,
+            attributes: req.body.attributes // dạng array
+        });
+
+        const savedProduct = await product.save();
+        res.status(201).send(savedProduct);
+    } catch (err) {
+        console.error('Lỗi tạo product:', err);
+        res.status(500).send({ error: err.message });
+    }
+});
+
+router.put('/:id', async (req, res) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).send('Invalid product ID');
+    }
+    const product = await Product.findByIdAndUpdate(
+        req.params.id,
+        {
+            category_id: req.body.category_id,
+            name: req.body.name,
+            price: req.body.price,
+            description: req.body.description,
+            SKU: req.body.SKU,
+            qty_in_stock: req.body.qty_in_stock,
+            product_images: req.body.product_images,
+            attributes: req.body.attributes // dạng array
+        },
+        { new: true } // new: true để trả về bản cập nhật mới nhất
+    );
+    if (!product) {
+        return res.status(500).json({ success: false, message: 'Product not found' });
+    }
+    res.status(200).json({ success: true, message: 'Product updated successfully' });
+});
+
+router.delete('/:id', async (req, res) => {
+    Product.findByIdAndDelete(req.params.id).then((product) => {
+        if (product) {
+            return res.status(200).json({ success: true, message: 'Product deleted successfully' });
+        }
+        else {
+            return res.status(404).json({ success: false, message: 'Product not found' });
+        }
+    }).catch((err) => {
+        return res.status(400).json({ success: false, error: err });
+    })
+});
+
+router.get('/get/count', async (req, res) => {
+    try {
+        const productCount = await Product.countDocuments();
+        res.status(200).json({ productCount });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+})
 
 module.exports = router;

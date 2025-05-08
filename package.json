@@ -2,9 +2,9 @@
   "name": "h-g.co-server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "nodemon server"
+    "start": "nodemon server.js"
   },
   "repository": {
     "type": "git",
@@ -18,10 +18,17 @@
   },
   "homepage": "https://github.com/gxdumplingg/H-G.CO-Server#readme",
   "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "mssql": "^11.0.1"
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.13.2",
+    "morgan": "^1.10.0",
+    "mssql": "^11.0.1",
+    "multer": "^1.4.5-lts.2",
+    "multer-storage-cloudinary": "^4.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

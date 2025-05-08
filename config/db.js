@@ -1,26 +1,12 @@
-const sql = require('mssql');
-require('dotenv').config();
+const mongoose = require('mongoose')
 
-const config = {
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PWD,
-    server: process.env.SQL_SERVER,
-    database: process.env.SQL_DB,
-    options: {
-        encrypt: false,
-        trustServerCertificate: true,
-        enableArithAbort: true,
-    },
-    port: parseInt(process.env.SQL_PORT || '1433')
-};
+const connectDB = async () => {
+    try {
+        await mongoose.connect("mongodb+srv://comneuyh:Comneyuh2004Comneyuh22004@cluster0.vwhgkgy.mongodb.net/HnGshop?retryWrites=true&w=majority&appName=Cluster0")
+        console.log('kết nối db thành công')
+    } catch (error) {
+        console.log(error.message)
+    }
+}
 
-const pool = new sql.ConnectionPool(config);
-const poolConnect = pool.connect();
-
-poolConnect.then(() => {
-    console.log('Connected to SQL Server');
-}).catch((err) => {
-    console.error('Database connection failed:', err);
-});
-
-module.exports = { sql, pool, poolConnect };
+module.exports = connectDB;
