@@ -15,6 +15,7 @@ const categoryRouter = require('./routes/categoryRoutes');
 const User = require('./models/User');
 const userRouter = require('./routes/userRoutes');
 
+const routerImages = require('./routes/uploadRoutes');
 const app = express();
 const api = process.env.API_URL;
 
@@ -28,6 +29,7 @@ app.use(morgan('tiny'));
 app.use(`${api}/products`, productRouter);
 app.use(`${api}/categories`, categoryRouter);
 app.use(`${api}/users`, userRouter);
+app.use(`${api}/images`, routerImages);
 
 
 const connectDB = async () => {

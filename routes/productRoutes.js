@@ -3,7 +3,7 @@ const router = express.Router();
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const mongoose = require('mongoose');
-
+const productController = require('../controllers/productController');
 router.get(`/`, async (req, res) => {
     let filter = {};
 
@@ -22,6 +22,8 @@ router.get(`/`, async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
+router.get('/tags', productController.getProductsByTags);
 
 router.get('/:id', async (req, res) => {
     const product = await Product.findById(req.params.id).populate('category_id');
@@ -101,5 +103,7 @@ router.get('/get/count', async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 })
+
+
 
 module.exports = router;
