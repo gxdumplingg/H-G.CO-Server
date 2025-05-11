@@ -1,21 +1,33 @@
-const express = require('express');
-const router = express.Router();
-const userController = require('../controllers/userController');
-const auth = require('../middlewares/auth');
-const { upload } = require('../config/cloudinary');
+const { Router } = require('express');
+const {
+    register,
+    login,
+    getProfile,
+    uploadAvatar,
+    getUsers
+} = require('../controllers/userController');
+const { isAuthenticated, hasPermission } = require('../middlewares/auth');
+const { uploadAvatar: uploadAvatarMiddleware } = require('../config/cloudinary'); // Sửa dòng này
 
-// Public routes
-router.post('/register', userController.register);
-router.post('/login', userController.login);
+const router = Router();
 
-// Protected routes
-router.get('/profile', auth(), userController.getProfile);
-router.put('/avatar', auth(), (req, res, next) => {
-    console.log('Avatar upload route hit');
-    next();
-}, upload.single('avatar'), userController.uploadAvatar);
+// Đăng ký
+router.post('/register', register);
 
-// Admin routes
-router.get('/admin/users', auth(['admin']), userController.getUsers);
+// Đăng nhập
+router.post('/login', login);
+
+// Lấy profile
+router.get('/profile', isAuthenticated, getProfile);
+
+// Upload avatar
+router.post('/avatar',
+    isAuthenticated,
+    uploadAvatarMiddleware.single('avatar'), // Sửa dòng này
+    uploadAvatar
+);
+
+// Lấy danh sách users (admin)
+router.get('/', isAuthenticated, hasPermission('manage_users'), getUsers);
 
 module.exports = router;

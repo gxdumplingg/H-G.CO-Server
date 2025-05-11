@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const AddressSchema = new mongoose.Schema({
     address_id: String,
@@ -38,10 +38,10 @@ const UserSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
-    role: {
-        type: String,
-        enum: ['user', 'admin'],
-        default: 'user'
+    roleId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Role',
+        required: true
     },
     addresses: [AddressSchema],
     payment_methods: [PaymentMethodSchema]
@@ -50,11 +50,17 @@ const UserSchema = new mongoose.Schema({
 // Hash password trước khi lưu
 UserSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();
-    this.password = await bcrypt.hash(this.password, 10);
-    next();
+
+    try {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        next();
+    } catch (error) {
+        next(error);
+    }
 });
 
-// Method so sánh password
+// Method kiểm tra password
 UserSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };

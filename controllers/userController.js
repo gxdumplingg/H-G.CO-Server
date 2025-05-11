@@ -1,8 +1,10 @@
 const User = require('../models/User');
+const Role = require('../models/Role');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+
 // Đăng ký
-exports.register = async (req, res) => {
+const register = async (req, res) => {
     try {
         console.log('Register request body:', req.body);
 
@@ -23,13 +25,22 @@ exports.register = async (req, res) => {
             });
         }
 
+        // Tìm role customer
+        const customerRole = await Role.findOne({ name: 'customer' });
+        if (!customerRole) {
+            return res.status(500).json({
+                success: false,
+                message: 'Không tìm thấy role customer'
+            });
+        }
+
         // Tạo user mới
         const user = new User({
             username,
             email_address,
             phone_number,
             password,
-            role: 'user'
+            roleId: customerRole._id
         });
 
         // Lưu user với timeout
@@ -44,7 +55,7 @@ exports.register = async (req, res) => {
 
         // Tạo token
         const token = jwt.sign(
-            { userId: savedUser._id, role: savedUser.role },
+            { userId: savedUser._id },
             process.env.JWT_SECRET || 'your_jwt_secret',
             { expiresIn: '1d' }
         );
@@ -56,29 +67,12 @@ exports.register = async (req, res) => {
             user: {
                 id: savedUser._id,
                 username: savedUser.username,
-                email: savedUser.email_address,
-                role: savedUser.role
+                email: savedUser.email_address
             }
         });
 
     } catch (error) {
         console.error('Register error:', error);
-
-        // Xử lý các loại lỗi cụ thể
-        if (error.code === 'ECONNRESET') {
-            return res.status(503).json({
-                success: false,
-                message: 'Lỗi kết nối database, vui lòng thử lại'
-            });
-        }
-
-        if (error.message === 'Save timeout') {
-            return res.status(504).json({
-                success: false,
-                message: 'Hệ thống đang bận, vui lòng thử lại sau'
-            });
-        }
-
         return res.status(500).json({
             success: false,
             message: 'Lỗi server',
@@ -88,37 +82,31 @@ exports.register = async (req, res) => {
 };
 
 // Đăng nhập
-exports.login = async (req, res) => {
+const login = async (req, res) => {
     try {
-        console.log('Login request body:', req.body); // Thêm log để debug
-
         const { email_address, password } = req.body;
 
         // Tìm user theo email
-        const user = await User.findOne({ email_address });
-        console.log('Found user:', user); // Thêm log để debug
-
+        const user = await User.findOne({ email_address }).populate('roleId');
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: 'Email không tồn tại'
+                message: 'Email hoặc mật khẩu không đúng'
             });
         }
 
         // Kiểm tra password
         const isMatch = await user.comparePassword(password);
-        console.log('Password match:', isMatch); // Thêm log để debug
-
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
-                message: 'Mật khẩu không đúng'
+                message: 'Email hoặc mật khẩu không đúng'
             });
         }
 
         // Tạo token
         const token = jwt.sign(
-            { userId: user._id, role: user.role },
+            { userId: user._id },
             process.env.JWT_SECRET || 'your_jwt_secret',
             { expiresIn: '1d' }
         );
@@ -131,11 +119,11 @@ exports.login = async (req, res) => {
                 id: user._id,
                 username: user.username,
                 email: user.email_address,
-                role: user.role
+                role: user.roleId ? user.roleId.name : null
             }
         });
     } catch (error) {
-        console.error('Login error:', error); // Thêm log để debug
+        console.error('Login error:', error);
         res.status(500).json({
             success: false,
             message: 'Lỗi server',
@@ -145,18 +133,11 @@ exports.login = async (req, res) => {
 };
 
 // Lấy profile
-exports.getProfile = async (req, res) => {
+const getProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user.userId).select('-password');
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'Không tìm thấy user'
-            });
-        }
         res.json({
             success: true,
-            user
+            user: req.user
         });
     } catch (error) {
         res.status(500).json({
@@ -168,13 +149,8 @@ exports.getProfile = async (req, res) => {
 };
 
 // Upload avatar
-// controllers/userController.js
-exports.uploadAvatar = async (req, res) => {
+const uploadAvatar = async (req, res) => {
     try {
-        console.log('Upload avatar controller hit');
-        console.log('File:', req.file);
-        console.log('User:', req.user);
-
         if (!req.file) {
             return res.status(400).json({
                 success: false,
@@ -209,7 +185,7 @@ exports.uploadAvatar = async (req, res) => {
 };
 
 // Lấy danh sách users (admin)
-exports.getUsers = async (req, res) => {
+const getUsers = async (req, res) => {
     try {
         const users = await User.find().select('-password');
         res.json({
@@ -223,4 +199,12 @@ exports.getUsers = async (req, res) => {
             error: error.message
         });
     }
+};
+
+module.exports = {
+    register,
+    login,
+    getProfile,
+    uploadAvatar,
+    getUsers
 };
