@@ -6,21 +6,11 @@ const morgan = require('morgan');
 const cors = require('cors');
 
 
-const Product = require('./models/Product');
-const productRouter = require('./routes/products');
-
-const Category = require('./models/Category');
-const categoryRouter = require('./routes/category');
-
-const User = require('./models/User');
-const userRouter = require('./routes/users');
-
-const authRouter = require('./routes/auth');
 const productRouter = require('./routes/productRoutes');
 const categoryRouter = require('./routes/categoryRoutes');
-const orderRouter = require('./routes/orders');
-const adminRouter = require('./routes/admin');
-const dashboardRouter = require('./routes/dashboard');
+const orderRouter = require('./routes/orderRoutes');
+const adminRouter = require('./routes/adminRoutes');
+const dashboardRouter = require('./routes/dashboardRoutes');
 const cartRouter = require('./routes/cartRoutes');
 const userRouter = require('./routes/userRoutes');
 const imagesRouter = require('./routes/uploadRoutes');
@@ -39,7 +29,7 @@ app.use(morgan('tiny'));
 app.use(`${api}/products`, productRouter);
 app.use(`${api}/categories`, categoryRouter);
 app.use(`${api}/users`, userRouter);
-app.use(`${api}/auth`, authRouter);
+app.use(`${api}/auth`, userRouter);
 app.use(`${api}/orders`, orderRouter);
 app.use(`${api}/admin`, adminRouter);
 app.use(`${api}/admin/dashboard`, dashboardRouter);

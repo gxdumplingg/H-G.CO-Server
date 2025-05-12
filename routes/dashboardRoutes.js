@@ -3,10 +3,10 @@ const router = express.Router();
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
-const { isAuth, isAdmin } = require('../middleware/auth');
+const { isAuthenticated, isAdmin } = require('../middlewares/auth');
 
 // Get dashboard statistics
-router.get('/stats', isAuth, isAdmin, async (req, res) => {
+router.get('/stats', isAuthenticated, isAdmin, async (req, res) => {
     try {
         // Get total order value
         const totalOrdersValue = await Order.aggregate([
@@ -54,7 +54,7 @@ router.get('/stats', isAuth, isAdmin, async (req, res) => {
 });
 
 // Get recent orders
-router.get('/recent-orders', isAuth, isAdmin, async (req, res) => {
+router.get('/recent-orders', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const orders = await Order.find()
             .sort('-createdAt')

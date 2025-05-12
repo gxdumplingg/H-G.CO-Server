@@ -46,7 +46,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create product (admin only)
-router.post('/', isAuth, isAdmin, async (req, res) => {
+router.post('/', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const { name, description, price, category, image, stock } = req.body;
 
@@ -84,7 +84,7 @@ router.post('/', isAuth, isAdmin, async (req, res) => {
 });
 
 // Update product (admin only)
-router.put('/:id', isAuth, isAdmin, async (req, res) => {
+router.put('/:id', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const { name, description, price, category, image, stock } = req.body;
 
@@ -132,7 +132,7 @@ router.put('/:id', isAuth, isAdmin, async (req, res) => {
 });
 
 // Delete product (admin only)
-router.delete('/:id', isAuth, isAdmin, async (req, res) => {
+router.delete('/:id', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const product = await Product.findByIdAndDelete(req.params.id);
         if (!product) {

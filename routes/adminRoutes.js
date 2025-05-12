@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { isAuth, isAdmin } = require('../middleware/auth');
+const { isAuthenticated, isAdmin } = require('../middlewares/auth');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Category = require('../models/Category');
 
 // Get dashboard stats
-router.get('/dashboard', isAuth, isAdmin, async (req, res) => {
+router.get('/dashboard', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments();
         const totalProducts = await Product.countDocuments();
@@ -42,7 +42,7 @@ router.get('/dashboard', isAuth, isAdmin, async (req, res) => {
 });
 
 // Thêm endpoint dashboard/stats để tương thích
-router.get('/dashboard/stats', isAuth, isAdmin, async (req, res) => {
+router.get('/dashboard/stats', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments();
         const totalProducts = await Product.countDocuments();
@@ -103,7 +103,7 @@ router.get('/dashboard/stats', isAuth, isAdmin, async (req, res) => {
 });
 
 // Get all products
-router.get('/products', isAuth, isAdmin, async (req, res) => {
+router.get('/products', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const products = await Product.find()
             .sort({ createdAt: -1 });
@@ -121,9 +121,9 @@ router.get('/products', isAuth, isAdmin, async (req, res) => {
 });
 
 // Create product
-router.post('/products', isAuth, isAdmin, async (req, res) => {
+router.post('/products', isAuthenticated, isAdmin, async (req, res) => {
     try {
-        const { 
+        const {
             category_id,
             name,
             price,
@@ -162,9 +162,9 @@ router.post('/products', isAuth, isAdmin, async (req, res) => {
 });
 
 // Update product
-router.put('/products/:id', isAuth, isAdmin, async (req, res) => {
+router.put('/products/:id', isAuthenticated, isAdmin, async (req, res) => {
     try {
-        const { 
+        const {
             category_id,
             name,
             price,
@@ -177,7 +177,7 @@ router.put('/products/:id', isAuth, isAdmin, async (req, res) => {
 
         const product = await Product.findByIdAndUpdate(
             req.params.id,
-            { 
+            {
                 category_id,
                 name,
                 price,
@@ -212,7 +212,7 @@ router.put('/products/:id', isAuth, isAdmin, async (req, res) => {
 });
 
 // Delete product
-router.delete('/products/:id', isAuth, isAdmin, async (req, res) => {
+router.delete('/products/:id', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const product = await Product.findByIdAndDelete(req.params.id);
 
@@ -237,7 +237,7 @@ router.delete('/products/:id', isAuth, isAdmin, async (req, res) => {
 });
 
 // Get all orders
-router.get('/orders', isAuth, isAdmin, async (req, res) => {
+router.get('/orders', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const orders = await Order.find()
             .populate('user', 'firstName lastName email')
@@ -256,7 +256,7 @@ router.get('/orders', isAuth, isAdmin, async (req, res) => {
 });
 
 // Update order status
-router.put('/orders/:id/status', isAuth, isAdmin, async (req, res) => {
+router.put('/orders/:id/status', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const { status } = req.body;
 
@@ -295,7 +295,7 @@ router.put('/orders/:id/status', isAuth, isAdmin, async (req, res) => {
 });
 
 // Users Management
-router.get('/users', isAuth, isAdmin, async (req, res) => {
+router.get('/users', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const users = await User.find().select('-password').sort({ createdAt: -1 });
         res.json(users);
@@ -304,18 +304,18 @@ router.get('/users', isAuth, isAdmin, async (req, res) => {
     }
 });
 
-router.get('/users/:id', isAuth, isAdmin, async (req, res) => {
+router.get('/users/:id', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('-password');
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        
+
         // Get user's order statistics
         const orders = await Order.find({ user: req.params.id });
         const totalOrders = orders.length;
         const totalAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-        
+
         res.json({
             user,
             statistics: {
@@ -331,7 +331,7 @@ router.get('/users/:id', isAuth, isAdmin, async (req, res) => {
 });
 
 // Get categories with product count
-router.get('/categories', isAuth, isAdmin, async (req, res) => {
+router.get('/categories', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const categories = await Category.find();
         const categoriesWithCount = await Promise.all(
@@ -358,7 +358,7 @@ router.get('/categories', isAuth, isAdmin, async (req, res) => {
 });
 
 // Get products by category
-router.get('/products/category/:categoryId', isAuth, isAdmin, async (req, res) => {
+router.get('/products/category/:categoryId', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const products = await Product.find({ category_id: req.params.categoryId })
             .populate('category_id', 'name')

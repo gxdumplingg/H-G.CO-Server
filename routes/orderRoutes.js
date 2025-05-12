@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
-const { isAuth, isAdmin } = require('../middleware/auth');
+const { isAuthenticated, isAdmin } = require('../middlewares/auth');
 
 // Get all orders (admin only)
-router.get('/', isAuth, isAdmin, async (req, res) => {
+router.get('/', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const orders = await Order.find()
             .populate('user', 'name email')
@@ -17,7 +17,7 @@ router.get('/', isAuth, isAdmin, async (req, res) => {
 });
 
 // Get orders by user
-router.get('/user', isAuth, async (req, res) => {
+router.get('/user', isAuthenticated, async (req, res) => {
     try {
         const orders = await Order.find({ user: req.user.id })
             .populate('items.product', 'name price images')
@@ -30,7 +30,7 @@ router.get('/user', isAuth, async (req, res) => {
 });
 
 // Get order by ID
-router.get('/:id', isAuth, async (req, res) => {
+router.get('/:id', isAuthenticated, async (req, res) => {
     try {
         const order = await Order.findById(req.params.id)
             .populate('user', 'name email')
@@ -53,7 +53,7 @@ router.get('/:id', isAuth, async (req, res) => {
 });
 
 // Create order
-router.post('/', isAuth, async (req, res) => {
+router.post('/', isAuthenticated, async (req, res) => {
     try {
         const {
             items,
@@ -95,7 +95,7 @@ router.post('/', isAuth, async (req, res) => {
 });
 
 // Update order status (admin only)
-router.put('/:id/status', isAuth, isAdmin, async (req, res) => {
+router.put('/:id/status', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const { status } = req.body;
 
@@ -128,7 +128,7 @@ router.put('/:id/status', isAuth, isAdmin, async (req, res) => {
 });
 
 // Update order to paid
-router.put('/:id/pay', isAuth, async (req, res) => {
+router.put('/:id/pay', isAuthenticated, async (req, res) => {
     try {
         const order = await Order.findById(req.params.id);
 
