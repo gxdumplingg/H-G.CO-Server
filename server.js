@@ -1,33 +1,68 @@
 const express = require('express');
-  const cors = require('cors');
-  const mongoose = require('mongoose');
-  require('dotenv').config();
+const mongoose = require('mongoose');
+require('dotenv/config');
+const bodyParser = require('body-parser');
+const morgan = require('morgan');
+const cors = require('cors');
 
-  const app = express();
-  app.use(cors());
-  app.use(express.json());
 
-  const productRoutes = require('./routes/productRoutes');
-  app.use('/api/products', productRoutes);
+const Product = require('./models/Product');
+const productRouter = require('./routes/products');
 
-  // Kết nối MongoDB
-  const connectDB = async () => {
-      try {
-          await mongoose.connect(process.env.MONGO_URI);
-          console.log('Kết nối DB thành công');
-      } catch (error) {
-          console.error('Lỗi kết nối DB:', error);
-          process.exit(1); // Thoát nếu kết nối thất bại
-      }
-  };
+const Category = require('./models/Category');
+const categoryRouter = require('./routes/category');
 
-  // Khởi động server sau khi kết nối MongoDB
-  const PORT = process.env.PORT || 5000;
-  const startServer = async () => {
-      await connectDB(); // Đợi kết nối DB thành công
-      app.listen(PORT, () => {
-          console.log(`🚀 Server listening on port ${PORT}`);
-      });
-  };
+const User = require('./models/User');
+const userRouter = require('./routes/users');
 
-  startServer();
+const authRouter = require('./routes/auth');
+const orderRouter = require('./routes/orders');
+const adminRouter = require('./routes/admin');
+const dashboardRouter = require('./routes/dashboard');
+
+//const routerImages = require('./routes/uploadRoutes');
+const app = express();
+const api = process.env.API_URL || '/api/v1';
+
+app.use(cors({
+    origin: ['http://localhost:5500', 'http://127.0.0.1:5500'],
+    credentials: true
+}));
+// middleware
+app.use(bodyParser.json());
+app.use(morgan('tiny'));
+app.use(`${api}/products`, productRouter);
+app.use(`${api}/categories`, categoryRouter);
+app.use(`${api}/users`, userRouter);
+app.use(`${api}/auth`, authRouter);
+app.use(`${api}/orders`, orderRouter);
+app.use(`${api}/admin`, adminRouter);
+app.use(`${api}/admin/dashboard`, dashboardRouter);
+//app.use(`${api}/images`, routerImages);
+
+
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            dbName: "HnGshop"
+        });
+        console.log('Kết nối DB thành công');
+    } catch (error) {
+        console.error('Lỗi kết nối DB:', error);
+        process.exit(1);
+    }
+};
+
+
+
+const PORT = process.env.PORT;
+const startServer = async () => {
+    await connectDB(); // Đợi kết nối DB thành công
+    app.listen(PORT, () => {
+        console.log(`🚀 Server listening on port ${PORT}`);
+    });
+};
+
+startServer();
