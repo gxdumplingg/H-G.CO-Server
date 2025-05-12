@@ -1,255 +1,167 @@
 const Order = require('../models/Order');
-const Product = require('../models/Product');
+const User = require('../models/User');
 
-// Tạo đơn hàng mới
-const createOrder = async (req, res) => {
-    try {
-        const {
-            items,
-            shipping_address,
-            note
-        } = req.body;
+/**
+ * Get all orders with pagination and optional status filtering
+ * @route GET /api/v1/admin/orders
+ * @access Private/Admin
+ */
+exports.getOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Validate items
-        if (!items || items.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Không có sản phẩm trong đơn hàng'
-            });
-        }
-
-        // Validate shipping address
-        if (!shipping_address || !shipping_address.full_name || !shipping_address.phone ||
-            !shipping_address.address || !shipping_address.city ||
-            !shipping_address.district || !shipping_address.ward) {
-            return res.status(400).json({
-                success: false,
-                message: 'Thông tin địa chỉ giao hàng không đầy đủ'
-            });
-        }
-
-        // Tính tổng tiền và validate sản phẩm
-        let total_amount = 0;
-        const validatedItems = [];
-
-        for (const item of items) {
-            const product = await Product.findById(item.product_id)
-                .populate({
-                    path: 'attributes',
-                    match: { _id: item.variant_id }
-                });
-
-            if (!product) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Không tìm thấy sản phẩm với ID: ${item.product_id}`
-                });
-            }
-
-            const variant = product.attributes[0];
-            if (!variant) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Không tìm thấy biến thể với ID: ${item.variant_id}`
-                });
-            }
-
-            if (variant.qty_in_stock < item.quantity) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Số lượng sản phẩm ${product.name} không đủ`
-                });
-            }
-
-            // Thêm giá vào item
-            validatedItems.push({
-                product_id: item.product_id,
-                variant_id: item.variant_id,
-                quantity: item.quantity,
-                price: variant.price
-            });
-
-            total_amount += variant.price * item.quantity;
-        }
-
-        // Tạo mã đơn hàng duy nhất
-        let order_number;
-        let isUnique = false;
-
-        while (!isUnique) {
-            const timestamp = Date.now();
-            const random = Math.floor(Math.random() * 1000);
-            order_number = `ORD${timestamp}${random}`;
-
-            // Kiểm tra xem order_number đã tồn tại chưa
-            const existingOrder = await Order.findOne({ order_number });
-            if (!existingOrder) {
-                isUnique = true;
-            }
-        }
-
-        // Tạo đơn hàng mới
-        const order = new Order({
-            user_id: req.user._id,
-            order_number,
-            items: validatedItems,
-            total_amount,
-            shipping_address,
-            note
-        });
-
-        // Lưu đơn hàng
-        const savedOrder = await order.save();
-
-        // Cập nhật số lượng sản phẩm
-        for (const item of validatedItems) {
-            await Product.updateOne(
-                {
-                    _id: item.product_id,
-                    'attributes._id': item.variant_id
-                },
-                {
-                    $inc: {
-                        'attributes.$.qty_in_stock': -item.quantity
-                    }
-                }
-            );
-        }
-
-        res.status(201).json({
-            success: true,
-            data: savedOrder
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+    // Build filter based on query parameters
+    const filter = {};
+    if (status && status !== 'All') {
+      filter.status = status;
     }
-};
-// Lấy danh sách đơn hàng của user
-const getMyOrders = async (req, res) => {
-    try {
-        const orders = await Order.find({ user_id: req.user._id })
-            .populate({
-                path: 'items.product_id',
-                select: 'name main_image'
-            })
-            .populate({
-                path: 'items.variant_id',
-                populate: [
-                    { path: 'color_id', select: 'name color_code' },
-                    { path: 'size_id', select: 'name' }
-                ]
-            })
-            .sort({ createdAt: -1 });
 
-        res.json({
-            success: true,
-            data: orders
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+    // Get orders with pagination
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('user', 'name avatar')
+      .populate('items.product', 'name');
+
+    // Get total count for pagination
+    const totalCount = await Order.countDocuments(filter);
+
+    // Format orders for frontend display
+    const formattedOrders = orders.map(order => ({
+      id: order._id,
+      product: order.items[0]?.product?.name || 'Multiple Products',
+      date: order.createdAt,
+      customer: order.user?.name || 'Guest',
+      status: order.status,
+      amount: order.totalAmount,
+      avatar: order.user?.avatar || null
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        orders: formattedOrders,
+        totalCount,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(totalCount / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error getting orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Could not retrieve orders'
+    });
+  }
+};
+
+/**
+ * Get single order by ID
+ * @route GET /api/v1/admin/orders/:id
+ * @access Private/Admin
+ */
+exports.getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user', 'name email phone address')
+      .populate('items.product', 'name price images SKU');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
     }
+
+    res.status(200).json({
+      success: true,
+      data: order
+    });
+  } catch (error) {
+    console.error('Error getting order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Could not retrieve order details'
+    });
+  }
 };
 
-// Lấy chi tiết đơn hàng
-const getOrderDetail = async (req, res) => {
-    try {
-        const order = await Order.findOne({
-            _id: req.params.id,
-            user_id: req.user._id
-        })
-            .populate({
-                path: 'items.product_id',
-                select: 'name main_image'
-            })
-            .populate({
-                path: 'items.variant_id',
-                populate: [
-                    { path: 'color_id', select: 'name color_code' },
-                    { path: 'size_id', select: 'name' }
-                ]
-            });
+/**
+ * Update order status
+ * @route PUT /api/v1/admin/orders/:id
+ * @access Private/Admin
+ */
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
 
-        if (!order) {
-            return res.status(404).json({
-                success: false,
-                message: 'Không tìm thấy đơn hàng'
-            });
-        }
-
-        res.json({
-            success: true,
-            data: order
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status is required'
+      });
     }
-};
 
-// Hủy đơn hàng
-const cancelOrder = async (req, res) => {
-    try {
-        const order = await Order.findOne({
-            _id: req.params.id,
-            user_id: req.user._id
-        });
+    const order = await Order.findById(req.params.id);
 
-        if (!order) {
-            return res.status(404).json({
-                success: false,
-                message: 'Không tìm thấy đơn hàng'
-            });
-        }
-
-        if (order.order_status !== 'PENDING') {
-            return res.status(400).json({
-                success: false,
-                message: 'Không thể hủy đơn hàng này'
-            });
-        }
-
-        // Cập nhật trạng thái đơn hàng
-        order.order_status = 'CANCELLED';
-        await order.save();
-
-        // Hoàn trả số lượng sản phẩm
-        for (const item of order.items) {
-            await Product.updateOne(
-                {
-                    _id: item.product_id,
-                    'attributes._id': item.variant_id
-                },
-                {
-                    $inc: {
-                        'attributes.$.qty_in_stock': item.quantity
-                    }
-                }
-            );
-        }
-
-        res.json({
-            success: true,
-            message: 'Hủy đơn hàng thành công'
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
     }
+
+    order.status = status;
+
+    if (status === 'Delivered') {
+      order.deliveredAt = Date.now();
+    }
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      data: order
+    });
+  } catch (error) {
+    console.error('Error updating order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Could not update order status'
+    });
+  }
 };
 
-module.exports = {
-    createOrder,
-    getMyOrders,
-    getOrderDetail,
-    cancelOrder
-};
+/**
+ * Delete an order
+ * @route DELETE /api/v1/admin/orders/:id
+ * @access Private/Admin
+ */
+exports.deleteOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    await order.remove();
+
+    res.status(200).json({
+      success: true,
+      message: 'Order deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Could not delete order'
+    });
+  }
+}; 

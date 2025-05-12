@@ -1,152 +1,113 @@
 const express = require('express');
 const router = express.Router();
-
 const Product = require('../models/Product');
-const Category = require('../models/Category');
-const ProductImage = require('../models/ProductImage');
-const mongoose = require('mongoose');
-const productController = require('../controllers/productController');
-
+const { isAuthenticated, isAdmin } = require('../middlewares/auth');
 
 // Get all products
-// http://localhost:5000/api/v1/products/
 router.get('/', async (req, res) => {
     try {
-        // Lấy các tham số từ query
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 9;
-        const skip = (page - 1) * limit;
-
-        // Xử lý sort
-        // http://localhost:5000/api/v1/products/?sortBy=name&sortOrder=desc
-        const sortField = req.query.sortBy || 'createdAt';
-        const sortOrder = req.query.sortOrder === 'desc' ? -1 : 1;
-
-        // Validate sort field
-        const allowedSortFields = ['name', 'price', 'createdAt', 'qty_in_stock'];
-        if (!allowedSortFields.includes(sortField)) {
-            return res.status(400).json({
-                success: false,
-                message: `Invalid sort field. Allowed fields: ${allowedSortFields.join(', ')}`
-            });
-        }
-
-        // Tạo sort object
-        const sortOptions = {
-            [sortField]: sortOrder
-        };
-
-        // Xử lý filter
-        const filter = {};
-
-        // Filter theo category
-        // http://localhost:5000/api/v1/products/?category=categoryId
-        if (req.query.category) {
-            filter.category_id = req.query.category;
-        }
-
-        // Filter theo màu
-        // http://localhost:5000/api/v1/products/?color=colorId
-        if (req.query.color) {
-            filter['attributes.color_id'] = req.query.color;
-        }
-
-        // Filter theo giá
-        // http://localhost:5000/api/v1/products/?minPrice=minPrice&maxPrice=maxPrice
-        if (req.query.minPrice || req.query.maxPrice) {
-            filter.price = {};
-            if (req.query.minPrice) {
-                filter.price.$gte = parseInt(req.query.minPrice);
-            }
-            if (req.query.maxPrice) {
-                filter.price.$lte = parseInt(req.query.maxPrice);
-            }
-        }
-
-        // Tạo query options
-        // http://localhost:5000/api/v1/products/?skip=skip&limit=limit
-        const queryOptions = {
-            skip,
-            limit,
-            sort: sortOptions,
-            populate: [
-                { path: 'category_id', select: 'name' },
-                { path: 'main_image' },
-                { path: 'variant_images' },
-                {
-                    path: 'attributes',
-                    populate: [
-                        { path: 'color_id', select: 'name color_code' },
-                        { path: 'size_id', select: 'name' }
-                    ]
-                }
-            ]
-        };
-
-        // Thực hiện query với pagination, sort và filter
-        const [products, total] = await Promise.all([
-            Product.find(filter)
-                .sort(queryOptions.sort)
-                .skip(queryOptions.skip)
-                .limit(queryOptions.limit)
-                .populate(queryOptions.populate),
-            Product.countDocuments(filter)
-        ]);
-
-        // Tính toán thông tin pagination
-        const totalPages = Math.ceil(total / limit);
-        const hasNextPage = page < totalPages;
-        const hasPrevPage = page > 1;
-
+        const products = await Product.find();
         res.json({
             success: true,
-            data: products,
-            pagination: {
-                total,
-                totalPages,
-                currentPage: page,
-                limit,
-                hasNextPage,
-                hasPrevPage
-            },
-            sort: {
-                field: sortField,
-                order: sortOrder === 1 ? 'asc' : 'desc'
-            },
-            filter: {
-                category: req.query.category || null,
-                color: req.query.color || null,
-                priceRange: {
-                    min: req.query.minPrice || null,
-                    max: req.query.maxPrice || null
-                }
-            }
+            data: products
         });
     } catch (error) {
+        console.error('Get products error:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Lỗi lấy danh sách sản phẩm',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
-// http://localhost:5000/api/v1/products/tags
-router.get('/tags', productController.getProductsByTags);
 
-// Lấy chi tiết sản phẩm
-// http://localhost:5000/api/v1/products/:id
+// Get single product
 router.get('/:id', async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id)
-            .populate('category_id', 'name')
-            .populate('main_image')
-            .populate('variant_images')
-            .populate({
-                path: 'attributes',
-                populate: [
-                    { path: 'color_id', select: 'name color_code' },
-                    { path: 'size_id', select: 'name' }
-                ]
+        const product = await Product.findById(req.params.id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy sản phẩm'
             });
+        }
+        res.json({
+            success: true,
+            data: product
+        });
+    } catch (error) {
+        console.error('Get product error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi lấy thông tin sản phẩm',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// Create product (admin only)
+router.post('/', isAuth, isAdmin, async (req, res) => {
+    try {
+        const { name, description, price, category, image, stock } = req.body;
+
+        // Validate input
+        if (!name || !description || !price || !category || !image) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng cung cấp đầy đủ thông tin sản phẩm'
+            });
+        }
+
+        const product = new Product({
+            name,
+            description,
+            price,
+            category,
+            image,
+            stock: stock || 0
+        });
+
+        await product.save();
+        res.status(201).json({
+            success: true,
+            message: 'Thêm sản phẩm thành công',
+            data: product
+        });
+    } catch (error) {
+        console.error('Create product error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi thêm sản phẩm',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// Update product (admin only)
+router.put('/:id', isAuth, isAdmin, async (req, res) => {
+    try {
+        const { name, description, price, category, image, stock } = req.body;
+
+        // Validate input
+        if (!name || !description || !price || !category || !image) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng cung cấp đầy đủ thông tin sản phẩm'
+            });
+        }
+
+        const product = await Product.findByIdAndUpdate(
+            req.params.id,
+            {
+                name,
+                description,
+                price,
+                category,
+                image,
+                stock: stock || 0
+            },
+            { new: true, runValidators: true }
+        );
 
         if (!product) {
             return res.status(404).json({
@@ -157,79 +118,41 @@ router.get('/:id', async (req, res) => {
 
         res.json({
             success: true,
+            message: 'Cập nhật sản phẩm thành công',
             data: product
         });
     } catch (error) {
+        console.error('Update product error:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Lỗi cập nhật sản phẩm',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
 
-// http://localhost:5000/api/v1/products/
-router.post('/', async (req, res) => {
+// Delete product (admin only)
+router.delete('/:id', isAuth, isAdmin, async (req, res) => {
     try {
-        const category_id = await Category.findById(req.body.category_id);
-        if (!category_id) {
-            return res.status(400).send('Invalid category');
+        const product = await Product.findByIdAndDelete(req.params.id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy sản phẩm'
+            });
         }
-        const product = new Product({
-            category_id: req.body.category_id,
-            name: req.body.name,
-            price: req.body.price,
-            description: req.body.description,
-            SKU: req.body.SKU,
-            qty_in_stock: req.body.qty_in_stock,
-            product_images: req.body.product_images,
-            attributes: req.body.attributes // dạng array
+        res.json({
+            success: true,
+            message: 'Xóa sản phẩm thành công'
         });
-
-        const savedProduct = await product.save();
-        res.status(201).send(savedProduct);
-
-    } catch (err) {
-        console.error('Lỗi tạo product:', err);
-        res.status(500).send({ error: err.message });
+    } catch (error) {
+        console.error('Delete product error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi xóa sản phẩm',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
-});
-// http://localhost:5000/api/v1/products/:id
-router.put('/:id', async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).send('Invalid product ID');
-    }
-    const product = await Product.findByIdAndUpdate(
-        req.params.id,
-        {
-            category_id: req.body.category_id,
-            name: req.body.name,
-            price: req.body.price,
-            description: req.body.description,
-            SKU: req.body.SKU,
-            qty_in_stock: req.body.qty_in_stock,
-            product_images: req.body.product_images,
-            attributes: req.body.attributes // dạng array
-        },
-        { new: true } // new: true để trả về bản cập nhật mới nhất
-    );
-    if (!product) {
-        return res.status(500).json({ success: false, message: 'Product not found' });
-    }
-    res.status(200).json({ success: true, message: 'Product updated successfully' });
-});
-
-// http://localhost:5000/api/v1/products/:id
-router.delete('/:id', async (req, res) => {
-    Product.findByIdAndDelete(req.params.id).then((product) => {
-        if (product) {
-            return res.status(200).json({ success: true, message: 'Product deleted successfully' });
-        }
-        else {
-            return res.status(404).json({ success: false, message: 'Product not found' });
-        }
-    }).catch((err) => {
-        return res.status(400).json({ success: false, error: err });
-    })
 });
 
 // http://localhost:5000/api/v1/products/get/count

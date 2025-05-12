@@ -1,23 +1,21 @@
 {
-  "name": "h-g.co-server",
+  "name": "admin-server",
   "version": "1.0.0",
+<<<<<<< HEAD
   "description": "",
   "main": "server.js",
   "scripts": {
     "start": "nodemon server.js"
+=======
+  "description": "Backend server for admin dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+>>>>>>> dashboard_admin
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/gxdumplingg/H-G.CO-Server.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/gxdumplingg/H-G.CO-Server/issues"
-  },
-  "homepage": "https://github.com/gxdumplingg/H-G.CO-Server#readme",
   "dependencies": {
+<<<<<<< HEAD
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^1.41.3",
@@ -32,8 +30,23 @@
     "multer-storage-cloudinary": "^4.0.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
+=======
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^1.41.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.21.2",
+    "fs": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.8.7",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "path": "^0.12.7"
+>>>>>>> dashboard_admin
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.0.1"
   }
 }

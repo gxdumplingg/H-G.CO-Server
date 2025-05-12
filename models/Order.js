@@ -1,26 +1,16 @@
 const mongoose = require('mongoose');
 
-const OrderSchema = new mongoose.Schema({
-    user_id: {
+const orderSchema = mongoose.Schema({
+    user: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'User'
-    },
-    order_number: {
-        type: String,
-        required: true,
-        unique: true
+        ref: 'User',
+        required: true
     },
     items: [{
-        product_id: {
+        product: {
             type: mongoose.Schema.Types.ObjectId,
-            required: true,
-            ref: 'Product'
-        },
-        variant_id: {
-            type: mongoose.Schema.Types.ObjectId,
-            required: true,
-            ref: 'Attribute'
+            ref: 'Product',
+            required: true
         },
         quantity: {
             type: Number,
@@ -32,56 +22,77 @@ const OrderSchema = new mongoose.Schema({
             required: true
         }
     }],
-    total_amount: {
+    shippingAddress: {
+        fullName: { type: String, required: true },
+        address: { type: String, required: true },
+        city: { type: String, required: true },
+        postalCode: { type: String },
+        country: { type: String, required: true },
+        phone: { type: String, required: true }
+    },
+    paymentMethod: {
+        type: String,
+        required: true,
+        enum: 'COD',
+    },
+    paymentResult: {
+        id: { type: String },
+        status: { type: String },
+        update_time: { type: String },
+        email_address: { type: String }
+    },
+    itemsPrice: {
         type: Number,
-        required: true
+        required: true,
+        default: 0
     },
-    shipping_address: {
-        full_name: {
-            type: String,
-            required: true
-        },
-        phone: {
-            type: String,
-            required: true
-        },
-        address: {
-            type: String,
-            required: true
-        },
-        city: {
-            type: String,
-            required: true
-        },
-        district: {
-            type: String,
-            required: true
-        },
-        ward: {
-            type: String,
-            required: true
-        }
+    shippingPrice: {
+        type: Number,
+        required: true,
+        default: 0
     },
-    payment_method: {
+    taxPrice: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    totalAmount: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    status: {
         type: String,
-        enum: ['COD'],
-        default: 'COD'
+        required: true,
+        enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Canceled', 'Returned'],
+        default: 'Pending'
     },
-    payment_status: {
-        type: String,
-        enum: ['PENDING', 'PAID'],
-        default: 'PENDING'
+    isPaid: {
+        type: Boolean,
+        required: true,
+        default: false
     },
-    order_status: {
-        type: String,
-        enum: ['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELLED'],
-        default: 'PENDING'
+    paidAt: {
+        type: Date
     },
-    note: String
+    isDelivered: {
+        type: Boolean,
+        required: true,
+        default: false
+    },
+    deliveredAt: {
+        type: Date
+    }
 }, {
     timestamps: true
 });
 
-OrderSchema.index({ order_number: 1 }, { unique: true });
+orderSchema.virtual('id').get(function () {
+    return this._id.toHexString();
+});
 
-module.exports = mongoose.model('Order', OrderSchema);
+orderSchema.set('toJSON', {
+    virtuals: true
+});
+
+module.exports = mongoose.model('Order', orderSchema); 

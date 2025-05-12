@@ -4,27 +4,28 @@ require('dotenv/config');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const cors = require('cors');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpecs = require('./config/swagger');
 
 
-require('./models/Color');
-require('./models/Size');
-require('./models/Attribute');
-require('./models/Category');
-require('./models/Product');
-require('./models/ProductImage');
-require('./models/User');
+const Product = require('./models/Product');
+const productRouter = require('./routes/products');
 
+const Category = require('./models/Category');
+const categoryRouter = require('./routes/category');
 
+const User = require('./models/User');
+const userRouter = require('./routes/users');
+
+const authRouter = require('./routes/auth');
 const productRouter = require('./routes/productRoutes');
 const categoryRouter = require('./routes/categoryRoutes');
+const orderRouter = require('./routes/orders');
+const adminRouter = require('./routes/admin');
+const dashboardRouter = require('./routes/dashboard');
+const cartRouter = require('./routes/cartRoutes');
 const userRouter = require('./routes/userRoutes');
 const imagesRouter = require('./routes/uploadRoutes');
-const orderRouter = require('./routes/orderRoutes');
-const cartRouter = require('./routes/cartRoutes');
 
-
+//const routerImages = require('./routes/uploadRoutes');
 const app = express();
 const api = process.env.API_URL;
 
@@ -32,18 +33,20 @@ app.use(cors({
     origin: 'http://localhost:5500',
     credentials: true
 }));
-
 // middleware
 app.use(bodyParser.json());
 app.use(morgan('tiny'));
-
-// routes
 app.use(`${api}/products`, productRouter);
 app.use(`${api}/categories`, categoryRouter);
 app.use(`${api}/users`, userRouter);
-app.use(`${api}/images`, imagesRouter);
+app.use(`${api}/auth`, authRouter);
 app.use(`${api}/orders`, orderRouter);
+app.use(`${api}/admin`, adminRouter);
+app.use(`${api}/admin/dashboard`, dashboardRouter);
 app.use(`${api}/cart`, cartRouter);
+app.use(`${api}/images`, imagesRouter);
+//app.use(`${api}/images`, routerImages);
+
 
 const connectDB = async () => {
     try {
@@ -59,9 +62,11 @@ const connectDB = async () => {
     }
 };
 
-const PORT = process.env.PORT || 5000;
+
+
+const PORT = process.env.PORT;
 const startServer = async () => {
-    await connectDB();
+    await connectDB(); // Đợi kết nối DB thành công
     app.listen(PORT, () => {
         console.log(`🚀 Server listening on port ${PORT}`);
     });

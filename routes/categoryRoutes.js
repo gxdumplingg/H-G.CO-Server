@@ -1,71 +1,83 @@
-const Category = require('../models/Category');
 const express = require('express');
 const router = express.Router();
+const Category = require('../models/Category');
+const { isAuthenticated, isAdmin } = require('../middlewares/auth');
 
-// http://localhost:5000/api/categories/
+// Get all categories
 router.get('/', async (req, res) => {
-    const categoryList = await Category.find();
-    if (!categoryList) {
-        res.status(500).json({ success: false });
-    }
-    res.status(200).send(categoryList);
-
-});
-
-// http://localhost:5000/api/v1categories/:id
-router.get('/:id', async (req, res) => {
-    const category = await Category.findById(req.params.id);
-    if (!category) {
-        res.status(500).json({ success: false, message: 'Category not found' });
-    }
-    res.status(200).send(category);
-});
-
-// http://localhost:5000/api/v1/categories/
-router.post('/', async (req, res) => {
     try {
-        const category = new Category({
-            category_name: req.body.category_name,
-            description: req.body.description,
-            parent_category_id: req.body.parent_category_id || null
-        });
-
-        const savedCategory = await category.save();
-        res.status(201).json(savedCategory);
-    } catch (error) {
-        res.status(400).json({ message: 'Error creating category', error });
+        const categoryList = await Category.find();
+        res.status(200).send(categoryList);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
     }
 });
-// http://localhost:5000/api/v1/categories/:id
-router.put('/:id', async (req, res) => {
-    const category = await Category.findByIdAndUpdate(
-        req.params.id,
-        {
-            category_name: req.body.category_name,
-            description: req.body.description,
-            parent_category_id: req.body.parent_category_id || null
-        },
-        { new: true } // new: true để trả về bản cập nhật mới nhất
-    );
-    if (!category) {
-        return res.status(500).json({ success: false, message: 'Category not found' });
-    }
-    res.status(200).json({ success: true, message: 'Category updated successfully' });
-})
-// http://localhost:5000/api/v1/categories/:id
-router.delete('/:categoryId', async (req, res) => {
-    Category.findByIdAndDelete(req.params.categoryId).then((category) => {
-        if (category) {
-            return res.status(200).json({ success: true, message: 'Category deleted successfully' });
-        }
-        else {
+
+// Get category by ID
+router.get('/:id', async (req, res) => {
+    try {
+        const category = await Category.findById(req.params.id);
+        if (!category) {
             return res.status(404).json({ success: false, message: 'Category not found' });
         }
-    }).catch((err) => {
-        return res.status(400).json({ success: false, error: err });
-    })
+        res.status(200).send(category);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
+// Create new category
+router.post('/', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        let category = new Category({
+            name: req.body.name,
+            icon: req.body.icon,
+            color: req.body.color
+        });
 
+        category = await category.save();
+        res.status(201).send(category);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
-module.exports = router;
+// Update category
+router.put('/:id', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const category = await Category.findByIdAndUpdate(
+            req.params.id,
+            {
+                name: req.body.name,
+                icon: req.body.icon,
+                color: req.body.color
+            },
+            { new: true }
+        );
+
+        if (!category) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+
+        res.status(200).send(category);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Delete category
+router.delete('/:id', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+        const category = await Category.findByIdAndDelete(req.params.id);
+
+        if (category) {
+            return res.status(200).json({ success: true, message: 'Category deleted successfully' });
+        } else {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+module.exports = router; 
