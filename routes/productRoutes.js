@@ -11,21 +11,54 @@ const productController = require('../controllers/productController');
 // Get all products
 router.get('/', async (req, res) => {
     try {
-        const products = await Product.find()
-            .populate('category_id', 'name')
-            .populate('main_image')
-            .populate('variant_images')
-            .populate({
-                path: 'attributes',
-                populate: [
-                    { path: 'color_id', select: 'name color_code' },
-                    { path: 'size_id', select: 'name' }
-                ]
-            });
+        // Lấy các tham số từ query
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Tạo query options
+        const queryOptions = {
+            skip,
+            limit,
+            populate: [
+                { path: 'category_id', select: 'name' },
+                { path: 'main_image' },
+                { path: 'variant_images' },
+                {
+                    path: 'attributes',
+                    populate: [
+                        { path: 'color_id', select: 'name color_code' },
+                        { path: 'size_id', select: 'name' }
+                    ]
+                }
+            ]
+        };
+
+        // Thực hiện query với pagination
+        const [products, total] = await Promise.all([
+            Product.find()
+                .skip(queryOptions.skip)
+                .limit(queryOptions.limit)
+                .populate(queryOptions.populate),
+            Product.countDocuments()
+        ]);
+
+        // Tính toán thông tin pagination
+        const totalPages = Math.ceil(total / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
 
         res.json({
             success: true,
-            data: products
+            data: products,
+            pagination: {
+                total,
+                totalPages,
+                currentPage: page,
+                limit,
+                hasNextPage,
+                hasPrevPage
+            }
         });
     } catch (error) {
         res.status(500).json({
