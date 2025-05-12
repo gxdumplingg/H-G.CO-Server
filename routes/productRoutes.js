@@ -11,21 +11,110 @@ const productController = require('../controllers/productController');
 // Get all products
 router.get('/', async (req, res) => {
     try {
-        const products = await Product.find()
-            .populate('category_id', 'name')
-            .populate('main_image')
-            .populate('variant_images')
-            .populate({
-                path: 'attributes',
-                populate: [
-                    { path: 'color_id', select: 'name color_code' },
-                    { path: 'size_id', select: 'name' }
-                ]
+        // Lấy các tham số từ query
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 9;
+        const skip = (page - 1) * limit;
+
+        // Xử lý sort
+        const sortField = req.query.sortBy || 'createdAt';
+        const sortOrder = req.query.sortOrder === 'desc' ? -1 : 1;
+
+        // Validate sort field
+        const allowedSortFields = ['name', 'price', 'createdAt', 'qty_in_stock'];
+        if (!allowedSortFields.includes(sortField)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid sort field. Allowed fields: ${allowedSortFields.join(', ')}`
             });
+        }
+
+        // Tạo sort object
+        const sortOptions = {
+            [sortField]: sortOrder
+        };
+
+        // Xử lý filter
+        const filter = {};
+
+        // Filter theo category
+        if (req.query.category) {
+            filter.category_id = req.query.category;
+        }
+
+        // Filter theo màu
+        if (req.query.color) {
+            filter['attributes.color_id'] = req.query.color;
+        }
+
+        // Filter theo giá
+        if (req.query.minPrice || req.query.maxPrice) {
+            filter.price = {};
+            if (req.query.minPrice) {
+                filter.price.$gte = parseInt(req.query.minPrice);
+            }
+            if (req.query.maxPrice) {
+                filter.price.$lte = parseInt(req.query.maxPrice);
+            }
+        }
+
+        // Tạo query options
+        const queryOptions = {
+            skip,
+            limit,
+            sort: sortOptions,
+            populate: [
+                { path: 'category_id', select: 'name' },
+                { path: 'main_image' },
+                { path: 'variant_images' },
+                {
+                    path: 'attributes',
+                    populate: [
+                        { path: 'color_id', select: 'name color_code' },
+                        { path: 'size_id', select: 'name' }
+                    ]
+                }
+            ]
+        };
+
+        // Thực hiện query với pagination, sort và filter
+        const [products, total] = await Promise.all([
+            Product.find(filter)
+                .sort(queryOptions.sort)
+                .skip(queryOptions.skip)
+                .limit(queryOptions.limit)
+                .populate(queryOptions.populate),
+            Product.countDocuments(filter)
+        ]);
+
+        // Tính toán thông tin pagination
+        const totalPages = Math.ceil(total / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
 
         res.json({
             success: true,
-            data: products
+            data: products,
+            pagination: {
+                total,
+                totalPages,
+                currentPage: page,
+                limit,
+                hasNextPage,
+                hasPrevPage
+            },
+            sort: {
+                field: sortField,
+                order: sortOrder === 1 ? 'asc' : 'desc'
+            },
+            filter: {
+                category: req.query.category || null,
+                color: req.query.color || null,
+                priceRange: {
+                    min: req.query.minPrice || null,
+                    max: req.query.maxPrice || null
+                }
+            }
         });
     } catch (error) {
         res.status(500).json({
@@ -34,7 +123,6 @@ router.get('/', async (req, res) => {
         });
     }
 });
-
 router.get('/tags', productController.getProductsByTags);
 
 // Lấy chi tiết sản phẩm

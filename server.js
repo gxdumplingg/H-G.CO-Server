@@ -4,6 +4,9 @@ require('dotenv/config');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
+
 
 require('./models/Color');
 require('./models/Size');
@@ -18,6 +21,9 @@ const productRouter = require('./routes/productRoutes');
 const categoryRouter = require('./routes/categoryRoutes');
 const userRouter = require('./routes/userRoutes');
 const imagesRouter = require('./routes/uploadRoutes');
+const orderRouter = require('./routes/orderRoutes');
+const cartRouter = require('./routes/cartRoutes');
+
 
 const app = express();
 const api = process.env.API_URL;
@@ -36,6 +42,8 @@ app.use(`${api}/products`, productRouter);
 app.use(`${api}/categories`, categoryRouter);
 app.use(`${api}/users`, userRouter);
 app.use(`${api}/images`, imagesRouter);
+app.use(`${api}/orders`, orderRouter);
+app.use(`${api}/cart`, cartRouter);
 
 const connectDB = async () => {
     try {
