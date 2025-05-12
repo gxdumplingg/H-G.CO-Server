@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
+
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const ProductImage = require('../models/ProductImage');
 const mongoose = require('mongoose');
 const productController = require('../controllers/productController');
+
 
 // Get all products
 router.get('/', async (req, res) => {
@@ -88,6 +90,7 @@ router.post('/', async (req, res) => {
 
         const savedProduct = await product.save();
         res.status(201).send(savedProduct);
+
     } catch (err) {
         console.error('Lỗi tạo product:', err);
         res.status(500).send({ error: err.message });
@@ -117,6 +120,7 @@ router.put('/:id', async (req, res) => {
     }
     res.status(200).json({ success: true, message: 'Product updated successfully' });
 });
+
 
 router.delete('/:id', async (req, res) => {
     Product.findByIdAndDelete(req.params.id).then((product) => {

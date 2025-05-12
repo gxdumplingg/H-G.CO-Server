@@ -5,7 +5,6 @@ const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const cors = require('cors');
 
-// Import models theo thứ tự
 require('./models/Color');
 require('./models/Size');
 require('./models/Attribute');
@@ -14,7 +13,7 @@ require('./models/Product');
 require('./models/ProductImage');
 require('./models/User');
 
-// Import routes
+
 const productRouter = require('./routes/productRoutes');
 const categoryRouter = require('./routes/categoryRoutes');
 const userRouter = require('./routes/userRoutes');
