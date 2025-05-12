@@ -5,6 +5,7 @@ const { isAdmin } = require('../middlewares/auth');
 const fs = require('fs').promises;
 
 // Upload ảnh chính
+// http://localhost:5000/api/v1/images/products/main
 router.post('/products/main', isAdmin, uploadMain, async (req, res) => {
     try {
         console.log('Upload request received:', {
@@ -64,6 +65,7 @@ router.post('/products/main', isAdmin, uploadMain, async (req, res) => {
 });
 
 // Upload ảnh variants
+// http://localhost:5000/api/v1/images/products/variants
 router.post('/products/variants', isAdmin, uploadVariant, async (req, res) => {
     try {
         console.log('Upload request received:', {
