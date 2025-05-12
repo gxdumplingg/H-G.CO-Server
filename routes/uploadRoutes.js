@@ -1,81 +1,132 @@
-const { Router } = require('express');
-const { uploadImages } = require('../controllers/imagesController');
-const { isAuthenticated, hasPermission } = require('../middlewares/auth');
-const {
-    uploadProductMain,
-    uploadProductVariant,
-    uploadCategory,
-    uploadBanner,
-    uploadAvatar,
-    uploadTemp
-} = require('../config/cloudinary');
+const express = require('express');
+const router = express.Router();
+const { cloudinary, uploadMain, uploadVariant } = require('../config/cloudinary');
+const { isAdmin } = require('../middlewares/auth');
+const fs = require('fs').promises;
 
-const router = Router();
+// Upload ảnh chính
+router.post('/products/main', isAdmin, uploadMain, async (req, res) => {
+    try {
+        console.log('Upload request received:', {
+            file: req.file,
+            body: req.body
+        });
 
-// Error handling middleware
-const handleMulterError = (err, req, res, next) => {
-    if (err.name === 'MulterError') {
-        console.error('Multer error:', err);
-        return res.status(400).json({
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không có file ảnh được upload'
+            });
+        }
+
+        const { product_id } = req.body;
+        if (!product_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Thiếu product_id'
+            });
+        }
+
+        // Upload lên Cloudinary
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            folder: 'hn-g-shop/products/main',
+            transformation: [
+                { width: 500, height: 500, crop: 'limit' }
+            ]
+        });
+
+        // Xóa file tạm
+        await fs.unlink(req.file.path);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                url: result.secure_url,
+                product_id: product_id
+            }
+        });
+    } catch (error) {
+        console.error('Error uploading main image:', error);
+        // Xóa file tạm nếu có lỗi
+        if (req.file) {
+            try {
+                await fs.unlink(req.file.path);
+            } catch (unlinkError) {
+                console.error('Error deleting temp file:', unlinkError);
+            }
+        }
+        res.status(500).json({
             success: false,
-            message: `Upload error: ${err.message}`,
-            field: err.field,
-            code: err.code
+            message: 'Lỗi khi upload ảnh chính',
+            error: error.message || 'Unknown error'
         });
     }
-    next(err);
-};
+});
 
-// Upload ảnh sản phẩm chính
-router.post("/products/main",
-    isAuthenticated,
-    hasPermission('manage_products'),
-    uploadProductMain.single('image'),
-    uploadImages
-);
+// Upload ảnh variants
+router.post('/products/variants', isAdmin, uploadVariant, async (req, res) => {
+    try {
+        console.log('Upload request received:', {
+            files: req.files,
+            body: req.body
+        });
 
-// Upload ảnh biến thể sản phẩm
-router.post("/products/variants",
-    isAuthenticated,
-    hasPermission('manage_products'),
-    (req, res, next) => {
-        console.log('Request headers:', req.headers);
-        console.log('Request body:', req.body);
-        next();
-    },
-    uploadProductVariant.array('images', 5),
-    handleMulterError,
-    uploadImages
-);
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không có file ảnh được upload'
+            });
+        }
 
-// Upload ảnh danh mục
-router.post("/categories",
-    isAuthenticated,
-    hasPermission('manage_categories'),
-    uploadCategory.single('image'),
-    uploadImages
-);
+        const { product_id, variant_id } = req.body;
+        if (!product_id || !variant_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Thiếu product_id hoặc variant_id'
+            });
+        }
 
-// Upload ảnh banner
-router.post("/banners",
-    isAuthenticated,
-    hasPermission('manage_products'),
-    uploadBanner.single('image'),
-    uploadImages
-);
+        // Upload nhiều ảnh lên Cloudinary
+        const uploadPromises = req.files.map(file =>
+            cloudinary.uploader.upload(file.path, {
+                folder: 'hn-g-shop/products/variants',
+                transformation: [
+                    { width: 500, height: 500, crop: 'limit' }
+                ]
+            })
+        );
 
-// Upload ảnh đại diện
-router.post("/avatars",
-    isAuthenticated,
-    uploadAvatar.single('image'),
-    uploadImages
-);
+        const results = await Promise.all(uploadPromises);
 
-// Upload ảnh tạm thời
-router.post("/temp",
-    isAuthenticated,
-    uploadTemp.array('images', 5),
-    uploadImages
-);
+        // Xóa các file tạm
+        await Promise.all(req.files.map(file => fs.unlink(file.path)));
+
+        const images = results.map(result => ({
+            url: result.secure_url,
+            product_id: product_id,
+            variant_id: variant_id
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: images
+        });
+    } catch (error) {
+        console.error('Error uploading variant images:', error);
+        // Xóa các file tạm nếu có lỗi
+        if (req.files) {
+            try {
+                await Promise.all(req.files.map(file => fs.unlink(file.path)));
+            } catch (unlinkError) {
+                console.error('Error deleting temp files:', unlinkError);
+            }
+        }
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi upload ảnh variants',
+            error: error.message || 'Unknown error'
+        });
+    }
+});
 
 module.exports = router;

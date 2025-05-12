@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
-const AttributeSchema = require('./Attribute');
+// Sửa từ import schema thành import model
+const Attribute = require('./Attribute');
+
 const ProductSchema = new mongoose.Schema({
     category_id: {
         type: mongoose.Schema.Types.ObjectId,
@@ -26,19 +28,30 @@ const ProductSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
-    product_images: [{
-        type: String
-    }],
     tags: [String],
-    attributes: [AttributeSchema]
+    // Sửa từ AttributeSchema thành Attribute.schema
+    attributes: [Attribute.schema]
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
-ProductSchema.virtual('id').get(function () {
-    return this._id.toHexString();
+// Virtual field cho ảnh chính
+ProductSchema.virtual('main_image', {
+    ref: 'ProductImage',
+    localField: '_id',
+    foreignField: 'product_id',
+    justOne: true,
+    match: { type: 'main', is_active: true }
 });
-ProductSchema.set('toJSON', {
-    virtuals: true
+
+// Virtual field cho ảnh variants
+ProductSchema.virtual('variant_images', {
+    ref: 'ProductImage',
+    localField: '_id',
+    foreignField: 'product_id',
+    match: { type: 'variant', is_active: true }
 });
+
 module.exports = mongoose.model('Product', ProductSchema);

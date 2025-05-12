@@ -20,6 +20,7 @@ const AttributeSchema = new mongoose.Schema({
         required: true
     }
 }, {
-    _id: false,
-    timestamps: false
+    timestamps: true
 });
+
+module.exports = mongoose.model('Attribute', AttributeSchema);

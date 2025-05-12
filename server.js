@@ -5,17 +5,21 @@ const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const cors = require('cors');
 
+// Import models theo thứ tự
+require('./models/Color');
+require('./models/Size');
+require('./models/Attribute');
+require('./models/Category');
+require('./models/Product');
+require('./models/ProductImage');
+require('./models/User');
 
-const Product = require('./models/Product');
+// Import routes
 const productRouter = require('./routes/productRoutes');
-
-const Category = require('./models/Category');
 const categoryRouter = require('./routes/categoryRoutes');
-
-const User = require('./models/User');
 const userRouter = require('./routes/userRoutes');
-
 const imagesRouter = require('./routes/uploadRoutes');
+
 const app = express();
 const api = process.env.API_URL;
 
@@ -23,14 +27,16 @@ app.use(cors({
     origin: 'http://localhost:5500',
     credentials: true
 }));
+
 // middleware
 app.use(bodyParser.json());
 app.use(morgan('tiny'));
+
+// routes
 app.use(`${api}/products`, productRouter);
 app.use(`${api}/categories`, categoryRouter);
 app.use(`${api}/users`, userRouter);
 app.use(`${api}/images`, imagesRouter);
-
 
 const connectDB = async () => {
     try {
@@ -46,11 +52,9 @@ const connectDB = async () => {
     }
 };
 
-
-
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {
-    await connectDB(); // Đợi kết nối DB thành công
+    await connectDB();
     app.listen(PORT, () => {
         console.log(`🚀 Server listening on port ${PORT}`);
     });

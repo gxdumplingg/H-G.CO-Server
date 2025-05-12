@@ -1,75 +1,67 @@
 const mongoose = require('mongoose');
-const Role = require('../models/Role');
-const User = require('../models/User');
+const Product = require('../models/Product');
+const ProductImage = require('../models/ProductImage');
+const Color = require('../models/Color');
+const Size = require('../models/Size');
 require('dotenv').config();
 
-
-const defaultRoles = [
-    {
-        name: 'admin',
-        description: 'Quản trị viên',
-        permissions: [
-            'manage_products',    // Quản lý sản phẩm (thêm, sửa, xóa)
-            'manage_orders',      // Quản lý đơn hàng (xem, cập nhật trạng thái)
-            'manage_categories',  // Quản lý danh mục sản phẩm
-            'view_reports'        // Xem báo cáo doanh thu
-        ]
-    },
-    {
-        name: 'customer',
-        description: 'Khách hàng',
-        permissions: [
-            'view_products',      // Xem sản phẩm
-            'place_orders',       // Đặt hàng
-            'view_own_orders',    // Xem đơn hàng của mình
-            'update_profile'      // Cập nhật thông tin cá nhân
-        ]
-    }
-];
-
-const defaultAdmin = {
-    username: 'admin',
-    email_address: 'admin@example.com',
-    phone_number: '0123456789',
-    password: 'admin123',
-    avatar: ''
-};
-
-const initData = async () => {
+async function initProductImages() {
     try {
-        // Sử dụng MONGODB_URI đã hardcode
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGODB_URI);
         console.log('Connected to MongoDB');
 
-        // Xóa tất cả role cũ
-        await Role.deleteMany({});
-        console.log('Deleted all existing roles');
-
-        // Tạo role mới
-        const roles = await Role.insertMany(defaultRoles);
-        console.log('Created default roles:', roles);
-
-        // Tìm role admin
-        const adminRole = await Role.findOne({ name: 'admin' });
-        if (!adminRole) {
-            throw new Error('Admin role not found');
+        // Lấy tất cả sản phẩm
+        const products = await Product.find();
+        if (!products.length) {
+            throw new Error('Không tìm thấy sản phẩm nào. Hãy chạy initBasicData.js trước');
         }
 
-        // Tạo admin mặc định
-        const admin = new User({
-            ...defaultAdmin,
-            roleId: adminRole._id
-        });
+        // Lấy danh sách colors và sizes
+        const colors = await Color.find();
+        const sizes = await Size.find();
 
-        await admin.save();
-        console.log('Created default admin user:', admin.email_address);
+        // Xóa ảnh cũ nếu có
+        await ProductImage.deleteMany({});
+        console.log('Đã xóa ảnh cũ');
 
-        await mongoose.disconnect();
-        console.log('Disconnected from MongoDB');
+        // Thêm ảnh mới
+        const productImages = [];
+        for (const product of products) {
+            // Thêm ảnh chính
+            productImages.push({
+                product_id: product._id,
+                url: 'https://res.cloudinary.com/your-cloud-name/image/upload/v1/hn-g-shop/products/main/ao-thun-nam.jpg',
+                type: 'main',
+                is_active: true
+            });
+
+            // Thêm ảnh variants cho từng attribute
+            for (const attribute of product.attributes) {
+                const color = colors.find(c => c._id.toString() === attribute.color_id.toString());
+                const size = sizes.find(s => s._id.toString() === attribute.size_id.toString());
+
+                if (color && size) {
+                    productImages.push({
+                        product_id: product._id,
+                        variant_id: attribute._id,
+                        url: `https://res.cloudinary.com/your-cloud-name/image/upload/v1/hn-g-shop/products/variants/${product.name.toLowerCase().replace(/\s+/g, '-')}-${color.name.toLowerCase()}-${size.name.toLowerCase()}.jpg`,
+                        type: 'variant',
+                        is_active: true
+                    });
+                }
+            }
+        }
+
+        await ProductImage.insertMany(productImages);
+        console.log('Đã thêm product images');
+
+        console.log('\nKhởi tạo ảnh sản phẩm hoàn tất!');
     } catch (error) {
         console.error('Error:', error);
-        process.exit(1);
+    } finally {
+        await mongoose.disconnect();
+        console.log('\nDisconnected from MongoDB');
     }
-};
+}
 
-initData(); 
+initProductImages();

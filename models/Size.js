@@ -1,9 +1,16 @@
 const mongoose = require('mongoose');
 
-const sizeSchema = new mongoose.Schema({
+const SizeSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true,
+        required: true
+    },
+    is_active: {
+        type: Boolean,
+        default: true
     }
+}, {
+    timestamps: true
 });
-module.exports = mongoose.model('Size', sizeSchema);
+
+module.exports = mongoose.model('Size', SizeSchema);

@@ -7,8 +7,7 @@ const {
     getUsers
 } = require('../controllers/userController');
 const { isAuthenticated, hasPermission } = require('../middlewares/auth');
-const { uploadAvatar: uploadAvatarMiddleware } = require('../config/cloudinary'); // Sửa dòng này
-
+const { uploadAvatar: uploadAvatarMiddleware } = require('../config/cloudinary');
 const router = Router();
 
 // Đăng ký
@@ -23,7 +22,7 @@ router.get('/profile', isAuthenticated, getProfile);
 // Upload avatar
 router.post('/avatar',
     isAuthenticated,
-    uploadAvatarMiddleware.single('avatar'), // Sửa dòng này
+    uploadAvatarMiddleware, // Sử dụng middleware đã được định nghĩa
     uploadAvatar
 );
 

@@ -2,35 +2,71 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 const Category = require('../models/Category');
+const ProductImage = require('../models/ProductImage');
 const mongoose = require('mongoose');
 const productController = require('../controllers/productController');
-router.get(`/`, async (req, res) => {
-    let filter = {};
 
-    if (req.query.categories) {
-        // Chia chuỗi categories thành mảng ID
-        const categoryIds = req.query.categories.split(',');
-        filter.category_id = { $in: categoryIds };
-    }
-
+// Get all products
+router.get('/', async (req, res) => {
     try {
-        const productList = await Product.find(filter)
-            .populate('category_id', 'category_name')
-            .select('name product_images price');
-        res.status(200).send(productList);
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+        const products = await Product.find()
+            .populate('category_id', 'name')
+            .populate('main_image')
+            .populate('variant_images')
+            .populate({
+                path: 'attributes',
+                populate: [
+                    { path: 'color_id', select: 'name color_code' },
+                    { path: 'size_id', select: 'name' }
+                ]
+            });
+
+        res.json({
+            success: true,
+            data: products
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 });
 
 router.get('/tags', productController.getProductsByTags);
 
+// Lấy chi tiết sản phẩm
 router.get('/:id', async (req, res) => {
-    const product = await Product.findById(req.params.id).populate('category_id');
-    if (!product) {
-        res.status(500).json({ success: false, message: 'Product not found' });
+    try {
+        const product = await Product.findById(req.params.id)
+            .populate('category_id', 'name')
+            .populate('main_image')
+            .populate('variant_images')
+            .populate({
+                path: 'attributes',
+                populate: [
+                    { path: 'color_id', select: 'name color_code' },
+                    { path: 'size_id', select: 'name' }
+                ]
+            });
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy sản phẩm'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: product
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-    res.status(200).send(product);
 });
 
 router.post('/', async (req, res) => {
@@ -103,7 +139,5 @@ router.get('/get/count', async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 })
-
-
 
 module.exports = router;
