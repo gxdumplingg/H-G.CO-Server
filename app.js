@@ -12,12 +12,13 @@ const Category = require('./models/Category');
 const User = require('./models/User');
 
 // Import routes
-const productRouter = require('./routes/product');
-const categoryRouter = require('./routes/category');
-const userRouter = require('./routes/user');
-const orderRouter = require('./routes/order');
-const dashboardRouter = require('./routes/dashboard');
-const authRouter = require('./routes/auth');
+const productRouter = require('./routes/productRoutes');
+const categoryRouter = require('./routes/categoryRoutes');
+const userRouter = require('./routes/userRoutes');
+const orderRouter = require('./routes/orderRoutes');
+const dashboardRouter = require('./routes/dashboardRoutes');
+const authRouter = require('./routes/userRoutes'); // Assume auth routes are in userRoutes
+const rolesRouter = require('./routes/rolesRoutes');
 
 const app = express();
 const api = process.env.API_URL || '/api/v1';
@@ -39,9 +40,10 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use(`${api}/products`, productRouter);
 app.use(`${api}/categories`, categoryRouter);
 app.use(`${api}/users`, userRouter);
-app.use(`${api}/auth`, authRouter);
+app.use(`${api}/auth`, authRouter); // Auth routes are in userRoutes
 app.use(`${api}/orders`, orderRouter);
 app.use(`${api}/admin/dashboard`, dashboardRouter);
+app.use(`${api}/roles`, rolesRouter);
 
 // Error handler
 app.use((err, req, res, next) => {

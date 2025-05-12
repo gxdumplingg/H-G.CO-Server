@@ -14,6 +14,7 @@ const dashboardRouter = require('./routes/dashboardRoutes');
 const cartRouter = require('./routes/cartRoutes');
 const userRouter = require('./routes/userRoutes');
 const imagesRouter = require('./routes/uploadRoutes');
+const roleRouter = require('./routes/rolesRoutes');
 
 //const routerImages = require('./routes/uploadRoutes');
 const app = express();
@@ -35,6 +36,7 @@ app.use(`${api}/admin`, adminRouter);
 app.use(`${api}/admin/dashboard`, dashboardRouter);
 app.use(`${api}/cart`, cartRouter);
 app.use(`${api}/images`, imagesRouter);
+app.use(`${api}/roles`, roleRouter);
 //app.use(`${api}/images`, routerImages);
 
 

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const AddressSchema = new mongoose.Schema({
     address_id: String,
@@ -63,6 +64,18 @@ UserSchema.pre('save', async function (next) {
 // Method kiểm tra password
 UserSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Method tạo JWT token
+UserSchema.methods.generateToken = function () {
+    return jwt.sign(
+        {
+            id: this._id,
+            role: this.roleId
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '30d' }
+    );
 };
 
 module.exports = mongoose.model('User', UserSchema);

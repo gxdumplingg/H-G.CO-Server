@@ -30,9 +30,9 @@ router.get('/:id', async (req, res) => {
 router.post('/', isAuthenticated, isAdmin, async (req, res) => {
     try {
         let category = new Category({
-            name: req.body.name,
-            icon: req.body.icon,
-            color: req.body.color
+            category_name: req.body.category_name,
+            description: req.body.description,
+            parent_category_id: req.body.parent_category_id || null
         });
 
         category = await category.save();
@@ -48,9 +48,9 @@ router.put('/:id', isAuthenticated, isAdmin, async (req, res) => {
         const category = await Category.findByIdAndUpdate(
             req.params.id,
             {
-                name: req.body.name,
-                icon: req.body.icon,
-                color: req.body.color
+                category_name: req.body.category_name,
+                description: req.body.description,
+                parent_category_id: req.body.parent_category_id
             },
             { new: true }
         );

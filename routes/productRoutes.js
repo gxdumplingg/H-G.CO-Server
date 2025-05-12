@@ -1,15 +1,64 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
+const Color = require('../models/Color');
+const Size = require('../models/Size');
 const { isAuthenticated, isAdmin } = require('../middlewares/auth');
 
 // Get all products
 router.get('/', async (req, res) => {
     try {
-        const products = await Product.find();
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Build filter object
+        const filter = {};
+
+        // Filter by category
+        if (req.query.category_id) {
+            filter.category_id = req.query.category_id;
+        }
+
+        // Filter by price range
+        if (req.query.min_price || req.query.max_price) {
+            filter.price = {};
+            if (req.query.min_price) filter.price.$gte = parseFloat(req.query.min_price);
+            if (req.query.max_price) filter.price.$lte = parseFloat(req.query.max_price);
+        }
+
+        // Filter by tags
+        if (req.query.tags) {
+            const tags = req.query.tags.split(',');
+            filter.tags = { $in: tags };
+        }
+
+        // Search by name
+        if (req.query.search) {
+            filter.name = { $regex: req.query.search, $options: 'i' };
+        }
+
+        // Get total count for pagination
+        const total = await Product.countDocuments(filter);
+
+        // Get products with pagination
+        const products = await Product.find(filter)
+            .populate('category_id', 'name')
+            .populate('attributes.color_id', 'name')
+            .populate('attributes.size_id', 'name')
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: -1 });
+
         res.json({
             success: true,
-            data: products
+            data: products,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            }
         });
     } catch (error) {
         console.error('Get products error:', error);
@@ -48,13 +97,43 @@ router.get('/:id', async (req, res) => {
 // Create product (admin only)
 router.post('/', isAuthenticated, isAdmin, async (req, res) => {
     try {
-        const { name, description, price, category, image, stock } = req.body;
+        const {
+            name,
+            description,
+            price,
+            category_id,
+            SKU,
+            qty_in_stock,
+            tags,
+            attributes
+        } = req.body;
 
         // Validate input
-        if (!name || !description || !price || !category || !image) {
+        if (!name || !price || !category_id || !SKU || qty_in_stock === undefined) {
             return res.status(400).json({
                 success: false,
-                message: 'Vui lòng cung cấp đầy đủ thông tin sản phẩm'
+                message: 'Vui lòng điền đầy đủ thông tin bắt buộc'
+            });
+        }
+
+        // Validate attributes
+        if (attributes && attributes.length > 0) {
+            for (const attr of attributes) {
+                if (!attr.color_id || !attr.size_id || attr.qty_in_stock === undefined || attr.price === undefined) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Mỗi attribute phải có đầy đủ color_id, size_id, qty_in_stock và price'
+                    });
+                }
+            }
+        }
+
+        // Check if SKU already exists
+        const existingProduct = await Product.findOne({ SKU });
+        if (existingProduct) {
+            return res.status(400).json({
+                success: false,
+                message: 'SKU đã tồn tại'
             });
         }
 
@@ -62,9 +141,11 @@ router.post('/', isAuthenticated, isAdmin, async (req, res) => {
             name,
             description,
             price,
-            category,
-            image,
-            stock: stock || 0
+            category_id,
+            SKU,
+            qty_in_stock,
+            tags: tags || [],
+            attributes: attributes || []
         });
 
         await product.save();
@@ -92,7 +173,7 @@ router.put('/:id', isAuthenticated, isAdmin, async (req, res) => {
         if (!name || !description || !price || !category || !image) {
             return res.status(400).json({
                 success: false,
-                message: 'Vui lòng cung cấp đầy đủ thông tin sản phẩm'
+                message: error.message
             });
         }
 
