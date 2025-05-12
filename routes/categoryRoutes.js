@@ -2,6 +2,7 @@ const Category = require('../models/Category');
 const express = require('express');
 const router = express.Router();
 
+// http://localhost:5000/api/categories/
 router.get('/', async (req, res) => {
     const categoryList = await Category.find();
     if (!categoryList) {
@@ -11,6 +12,7 @@ router.get('/', async (req, res) => {
 
 });
 
+// http://localhost:5000/api/v1categories/:id
 router.get('/:id', async (req, res) => {
     const category = await Category.findById(req.params.id);
     if (!category) {
@@ -19,6 +21,7 @@ router.get('/:id', async (req, res) => {
     res.status(200).send(category);
 });
 
+// http://localhost:5000/api/v1/categories/
 router.post('/', async (req, res) => {
     try {
         const category = new Category({
@@ -33,6 +36,7 @@ router.post('/', async (req, res) => {
         res.status(400).json({ message: 'Error creating category', error });
     }
 });
+// http://localhost:5000/api/v1/categories/:id
 router.put('/:id', async (req, res) => {
     const category = await Category.findByIdAndUpdate(
         req.params.id,
@@ -48,7 +52,7 @@ router.put('/:id', async (req, res) => {
     }
     res.status(200).json({ success: true, message: 'Category updated successfully' });
 })
-//api/v1/:id
+// http://localhost:5000/api/v1/categories/:id
 router.delete('/:categoryId', async (req, res) => {
     Category.findByIdAndDelete(req.params.categoryId).then((category) => {
         if (category) {

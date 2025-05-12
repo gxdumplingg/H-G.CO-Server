@@ -9,6 +9,7 @@ const productController = require('../controllers/productController');
 
 
 // Get all products
+// http://localhost:5000/api/v1/products/
 router.get('/', async (req, res) => {
     try {
         // Lấy các tham số từ query
@@ -17,6 +18,7 @@ router.get('/', async (req, res) => {
         const skip = (page - 1) * limit;
 
         // Xử lý sort
+        // http://localhost:5000/api/v1/products/?sortBy=name&sortOrder=desc
         const sortField = req.query.sortBy || 'createdAt';
         const sortOrder = req.query.sortOrder === 'desc' ? -1 : 1;
 
@@ -38,16 +40,19 @@ router.get('/', async (req, res) => {
         const filter = {};
 
         // Filter theo category
+        // http://localhost:5000/api/v1/products/?category=categoryId
         if (req.query.category) {
             filter.category_id = req.query.category;
         }
 
         // Filter theo màu
+        // http://localhost:5000/api/v1/products/?color=colorId
         if (req.query.color) {
             filter['attributes.color_id'] = req.query.color;
         }
 
         // Filter theo giá
+        // http://localhost:5000/api/v1/products/?minPrice=minPrice&maxPrice=maxPrice
         if (req.query.minPrice || req.query.maxPrice) {
             filter.price = {};
             if (req.query.minPrice) {
@@ -59,6 +64,7 @@ router.get('/', async (req, res) => {
         }
 
         // Tạo query options
+        // http://localhost:5000/api/v1/products/?skip=skip&limit=limit
         const queryOptions = {
             skip,
             limit,
@@ -123,9 +129,11 @@ router.get('/', async (req, res) => {
         });
     }
 });
+// http://localhost:5000/api/v1/products/tags
 router.get('/tags', productController.getProductsByTags);
 
 // Lấy chi tiết sản phẩm
+// http://localhost:5000/api/v1/products/:id
 router.get('/:id', async (req, res) => {
     try {
         const product = await Product.findById(req.params.id)
@@ -159,6 +167,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// http://localhost:5000/api/v1/products/
 router.post('/', async (req, res) => {
     try {
         const category_id = await Category.findById(req.body.category_id);
@@ -184,7 +193,7 @@ router.post('/', async (req, res) => {
         res.status(500).send({ error: err.message });
     }
 });
-
+// http://localhost:5000/api/v1/products/:id
 router.put('/:id', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
         return res.status(400).send('Invalid product ID');
@@ -209,7 +218,7 @@ router.put('/:id', async (req, res) => {
     res.status(200).json({ success: true, message: 'Product updated successfully' });
 });
 
-
+// http://localhost:5000/api/v1/products/:id
 router.delete('/:id', async (req, res) => {
     Product.findByIdAndDelete(req.params.id).then((product) => {
         if (product) {
@@ -223,6 +232,7 @@ router.delete('/:id', async (req, res) => {
     })
 });
 
+// http://localhost:5000/api/v1/products/get/count
 router.get('/get/count', async (req, res) => {
     try {
         const productCount = await Product.countDocuments();
