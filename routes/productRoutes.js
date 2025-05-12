@@ -13,13 +13,56 @@ router.get('/', async (req, res) => {
     try {
         // Lấy các tham số từ query
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 9;
         const skip = (page - 1) * limit;
+
+        // Xử lý sort
+        const sortField = req.query.sortBy || 'createdAt';
+        const sortOrder = req.query.sortOrder === 'desc' ? -1 : 1;
+
+        // Validate sort field
+        const allowedSortFields = ['name', 'price', 'createdAt', 'qty_in_stock'];
+        if (!allowedSortFields.includes(sortField)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid sort field. Allowed fields: ${allowedSortFields.join(', ')}`
+            });
+        }
+
+        // Tạo sort object
+        const sortOptions = {
+            [sortField]: sortOrder
+        };
+
+        // Xử lý filter
+        const filter = {};
+
+        // Filter theo category
+        if (req.query.category) {
+            filter.category_id = req.query.category;
+        }
+
+        // Filter theo màu
+        if (req.query.color) {
+            filter['attributes.color_id'] = req.query.color;
+        }
+
+        // Filter theo giá
+        if (req.query.minPrice || req.query.maxPrice) {
+            filter.price = {};
+            if (req.query.minPrice) {
+                filter.price.$gte = parseInt(req.query.minPrice);
+            }
+            if (req.query.maxPrice) {
+                filter.price.$lte = parseInt(req.query.maxPrice);
+            }
+        }
 
         // Tạo query options
         const queryOptions = {
             skip,
             limit,
+            sort: sortOptions,
             populate: [
                 { path: 'category_id', select: 'name' },
                 { path: 'main_image' },
@@ -34,13 +77,14 @@ router.get('/', async (req, res) => {
             ]
         };
 
-        // Thực hiện query với pagination
+        // Thực hiện query với pagination, sort và filter
         const [products, total] = await Promise.all([
-            Product.find()
+            Product.find(filter)
+                .sort(queryOptions.sort)
                 .skip(queryOptions.skip)
                 .limit(queryOptions.limit)
                 .populate(queryOptions.populate),
-            Product.countDocuments()
+            Product.countDocuments(filter)
         ]);
 
         // Tính toán thông tin pagination
@@ -58,6 +102,18 @@ router.get('/', async (req, res) => {
                 limit,
                 hasNextPage,
                 hasPrevPage
+            },
+            sort: {
+                field: sortField,
+                order: sortOrder === 1 ? 'asc' : 'desc'
+            },
+            filter: {
+                category: req.query.category || null,
+                color: req.query.color || null,
+                priceRange: {
+                    min: req.query.minPrice || null,
+                    max: req.query.maxPrice || null
+                }
             }
         });
     } catch (error) {
@@ -67,7 +123,6 @@ router.get('/', async (req, res) => {
         });
     }
 });
-
 router.get('/tags', productController.getProductsByTags);
 
 // Lấy chi tiết sản phẩm
